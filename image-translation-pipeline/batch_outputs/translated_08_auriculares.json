@@ -1,0 +1,65 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "Auriculares Inalámbricos",
+      "translated_text": "Wireless Headphones",
+      "bbox": {
+        "x": 15.0,
+        "y": 6.0,
+        "width": 69.75,
+        "height": 5.333333333333334
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#FFFFFF",
+      "background_color": "#1E1E24",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Batería de 20 horas",
+      "translated_text": "20-hour Battery",
+      "bbox": {
+        "x": 24.0,
+        "y": 41.0,
+        "width": 52.125,
+        "height": 5.0
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#1E1E24",
+      "background_color": "#F5F5F5",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Cancelación de ruido activa",
+      "translated_text": "Active Noise Cancellation",
+      "bbox": {
+        "x": 27.750000000000004,
+        "y": 50.66666666666667,
+        "width": 44.5,
+        "height": 3.5000000000000004
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#6B6B6B",
+      "background_color": "#F5F5F5",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Garantía de 1 año",
+      "translated_text": "1-year Warranty",
+      "bbox": {
+        "x": 36.75,
+        "y": 87.33333333333333,
+        "width": 26.5,
+        "height": 3.166666666666667
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#6B6B6B",
+      "background_color": "#F5F5F5",
+      "text_alignment": "center"
+    }
+  ]
+}

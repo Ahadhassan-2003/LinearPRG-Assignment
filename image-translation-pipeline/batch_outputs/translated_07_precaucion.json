@@ -1,0 +1,35 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "PRECAUCIÓN",
+      "translated_text": "CAUTION",
+      "bbox": {
+        "x": 23.94736842105263,
+        "y": 35.714285714285715,
+        "width": 52.23684210526316,
+        "height": 12.619047619047619
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#1A1A1A",
+      "background_color": "#FFC107",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Producto inflamable. Mantener alejado del fuego y los niños.",
+      "translated_text": "Flammable product. Keep away from fire and children.",
+      "bbox": {
+        "x": 23.94736842105263,
+        "y": 60.71428571428571,
+        "width": 52.368421052631575,
+        "height": 16.428571428571427
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#1A1A1A",
+      "background_color": "#FFC107",
+      "text_alignment": "center"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "ENVÍO GRATIS",
+      "translated_text": "FREE SHIPPING",
+      "bbox": {
+        "x": 21.0,
+        "y": 28.57142857142857,
+        "width": 58.12500000000001,
+        "height": 16.28571428571429
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#FFFFFF",
+      "background_color": "#1E4A7D",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "en pedidos superiores a 5.000 Rs",
+      "translated_text": "on orders over 5,000 Rs",
+      "bbox": {
+        "x": 21.125,
+        "y": 58.57142857142858,
+        "width": 57.875,
+        "height": 7.7142857142857135
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#FFFFFF",
+      "background_color": "#1E4A7D",
+      "text_alignment": "center"
+    }
+  ]
+}

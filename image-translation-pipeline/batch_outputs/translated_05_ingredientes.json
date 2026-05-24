@@ -1,0 +1,110 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "Ingredientes",
+      "translated_text": "Ingredients",
+      "bbox": {
+        "x": 6.71875,
+        "y": 8.392857142857142,
+        "width": 39.6875,
+        "height": 6.25
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#000000",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Harina de trigo",
+      "translated_text": "Wheat flour",
+      "bbox": {
+        "x": 6.25,
+        "y": 24.107142857142858,
+        "width": 37.34375,
+        "height": 4.821428571428572
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Azúcar de caña",
+      "translated_text": "Cane sugar",
+      "bbox": {
+        "x": 6.25,
+        "y": 34.64285714285714,
+        "width": 38.125,
+        "height": 3.9285714285714284
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Aceite de girasol",
+      "translated_text": "Sunflower oil",
+      "bbox": {
+        "x": 6.25,
+        "y": 45.535714285714285,
+        "width": 40.78125,
+        "height": 4.821428571428572
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Cacao en polvo (12%)",
+      "translated_text": "Cocoa powder (12%)",
+      "bbox": {
+        "x": 6.25,
+        "y": 56.25,
+        "width": 52.65625000000001,
+        "height": 4.821428571428572
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Sal marina",
+      "translated_text": "Sea salt",
+      "bbox": {
+        "x": 6.25,
+        "y": 66.96428571428571,
+        "width": 27.8125,
+        "height": 3.75
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Levadura",
+      "translated_text": "Yeast",
+      "bbox": {
+        "x": 6.25,
+        "y": 77.67857142857143,
+        "width": 24.6875,
+        "height": 3.75
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#3D2817",
+      "background_color": "#F5F1E8",
+      "text_alignment": "left"
+    }
+  ]
+}

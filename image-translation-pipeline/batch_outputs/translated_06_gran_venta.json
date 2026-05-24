@@ -1,0 +1,50 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "GRAN VENTA",
+      "translated_text": "BIG SALE",
+      "bbox": {
+        "x": 19.51219512195122,
+        "y": 17.5,
+        "width": 61.21951219512195,
+        "height": 14.722222222222223
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#FFFFFF",
+      "background_color": "#E63E5C",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Precio: 1.200 Rs",
+      "translated_text": "Price: 1,200 Rs",
+      "bbox": {
+        "x": 25.975609756097562,
+        "y": 46.666666666666664,
+        "width": 48.292682926829265,
+        "height": 9.166666666666666
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#F4E76E",
+      "background_color": "#E63E5C",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Sólo por hoy",
+      "translated_text": "Only for today",
+      "bbox": {
+        "x": 38.78048780487805,
+        "y": 70.55555555555556,
+        "width": 22.5609756097561,
+        "height": 8.333333333333332
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#FFFFFF",
+      "background_color": "#E63E5C",
+      "text_alignment": "center"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "OFERTA ESPECIAL",
+      "translated_text": "SPECIAL OFFER",
+      "bbox": {
+        "x": 10.375,
+        "y": 33.0,
+        "width": 79.5,
+        "height": 12.25
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#C41E3A",
+      "background_color": "#FFFFFF",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "50% DE DESCUENTO",
+      "translated_text": "50% OFF",
+      "bbox": {
+        "x": 16.25,
+        "y": 57.25,
+        "width": 67.75,
+        "height": 9.25
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#2B2B2B",
+      "background_color": "#FFFFFF",
+      "text_alignment": "center"
+    }
+  ]
+}

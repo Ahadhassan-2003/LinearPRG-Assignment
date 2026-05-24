@@ -1,0 +1,50 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "Instrucciones de uso",
+      "translated_text": "Instructions for use",
+      "bbox": {
+        "x": 5.657894736842105,
+        "y": 9.583333333333334,
+        "width": 51.578947368421055,
+        "height": 5.416666666666667
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#000000",
+      "background_color": "#FFFFFF",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Aplicar una pequeña cantidad sobre la piel limpia y seca, dos veces al día. Masajear suavemente hasta su completa absorción. Evitar el contacto con los ojos. En caso de irritación, suspender el uso y consultar a un médico.",
+      "translated_text": "Apply a small amount to clean, dry skin twice a day. Massage gently until completely absorbed. Avoid contact with eyes. In case of irritation, discontinue use and consult a doctor.",
+      "bbox": {
+        "x": 5.263157894736842,
+        "y": 23.75,
+        "width": 78.15789473684211,
+        "height": 40.0
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#000000",
+      "background_color": "#FFFFFF",
+      "text_alignment": "left"
+    },
+    {
+      "original_text": "Conservar en un lugar fresco y seco.",
+      "translated_text": "Store in a cool, dry place.",
+      "bbox": {
+        "x": 5.394736842105264,
+        "y": 75.83333333333333,
+        "width": 52.5,
+        "height": 4.583333333333333
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#666666",
+      "background_color": "#FFFFFF",
+      "text_alignment": "left"
+    }
+  ]
+}

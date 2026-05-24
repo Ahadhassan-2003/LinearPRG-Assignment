@@ -1,0 +1,80 @@
+{
+  "detected_language": "Spanish",
+  "text_blocks": [
+    {
+      "original_text": "OLIVAR DEL SUR",
+      "translated_text": "OLIVAR DEL SUR",
+      "bbox": {
+        "x": 23.857142857142858,
+        "y": 6.4,
+        "width": 52.57142857142857,
+        "height": 6.0
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#FFFFFF",
+      "background_color": "#4A7244",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Aceite de Oliva Virgen Extra",
+      "translated_text": "Extra Virgin Olive Oil",
+      "bbox": {
+        "x": 11.571428571428571,
+        "y": 33.2,
+        "width": 76.57142857142857,
+        "height": 6.6000000000000005
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#2B2B2B",
+      "background_color": "#EDE8D8",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Primera prensada en frío",
+      "translated_text": "First cold pressed",
+      "bbox": {
+        "x": 27.285714285714285,
+        "y": 46.800000000000004,
+        "width": 45.42857142857143,
+        "height": 5.2
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#5A5A5A",
+      "background_color": "#EDE8D8",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "500 ml",
+      "translated_text": "500 ml",
+      "bbox": {
+        "x": 42.142857142857146,
+        "y": 61.0,
+        "width": 15.714285714285714,
+        "height": 4.6
+      },
+      "font_size_relative": "large",
+      "is_bold": true,
+      "text_color": "#2B2B2B",
+      "background_color": "#EDE8D8",
+      "text_alignment": "center"
+    },
+    {
+      "original_text": "Hecho en España",
+      "translated_text": "Made in Spain",
+      "bbox": {
+        "x": 35.42857142857142,
+        "y": 84.8,
+        "width": 29.142857142857142,
+        "height": 4.8
+      },
+      "font_size_relative": "medium",
+      "is_bold": false,
+      "text_color": "#5A5A5A",
+      "background_color": "#EDE8D8",
+      "text_alignment": "center"
+    }
+  ]
+}
