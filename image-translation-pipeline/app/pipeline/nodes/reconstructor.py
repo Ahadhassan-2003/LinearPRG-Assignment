@@ -47,7 +47,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from app.models import PipelineState, TextBlock
 from app.utils.image_utils import (
-    calculate_font_size,
+    sample_background_color,
     hex_to_rgb,
     image_to_bytes,
     load_image_from_bytes,
@@ -145,6 +145,126 @@ def _cover_original_text(
     return image
 
 
+def _get_text_width(font: ImageFont.FreeTypeFont | ImageFont.ImageFont, text: str) -> float:
+    """Helper to get the pixel width of a string rendered in the given font."""
+    try:
+        return float(font.getlength(text))
+    except AttributeError:
+        try:
+            bbox = font.getbbox(text)
+            return float(bbox[2] - bbox[0])
+        except AttributeError:
+            return len(text) * 6.0  # fallback for basic bitmap font
+
+
+def _wrap_text(font: ImageFont.FreeTypeFont | ImageFont.ImageFont, text: str, max_width: float) -> list[str]:
+    """Wrap text to ensure no line exceeds max_width."""
+    words = text.split()
+    if not words:
+        return []
+    lines = []
+    current_line: list[str] = []
+    for word in words:
+        test_line = " ".join(current_line + [word])
+        if current_line and _get_text_width(font, test_line) > max_width:
+            lines.append(" ".join(current_line))
+            current_line = [word]
+        else:
+            current_line.append(word)
+    if current_line:
+        lines.append(" ".join(current_line))
+    return lines
+
+
+def _find_best_font_and_wrap(
+    text: str, w: int, h: int, is_bold: bool, font_size_relative: str
+) -> tuple[ImageFont.FreeTypeFont | ImageFont.ImageFont, list[str], int]:
+    """Find the largest font size where the wrapped text fits within the bbox dimensions."""
+    _SEED = {"large": 36, "medium": 24, "small": 14}
+    size = min(_SEED.get(font_size_relative, 24), 72, max(h, 8))
+    size = max(size, 8)
+
+    target_width = w * 0.95
+    target_height = h * 0.95
+
+    while size > 8:
+        font = _load_font(size, is_bold)
+        lines = _wrap_text(font, text, target_width)
+
+        try:
+            line_bbox = font.getbbox("Ag")
+            line_height = line_bbox[3] - line_bbox[1] + 2
+        except AttributeError:
+            line_height = size + 2
+
+        total_height = line_height * len(lines)
+        max_line_width = max([_get_text_width(font, l) for l in lines]) if lines else 0
+
+        if max_line_width <= target_width and total_height <= target_height:
+            return font, lines, line_height
+
+        size -= 1
+
+    # Fallback to minimum size
+    font = _load_font(8, is_bold)
+    lines = _wrap_text(font, text, target_width)
+    try:
+        line_height = font.getbbox("Ag")[3] - font.getbbox("Ag")[1] + 2
+    except AttributeError:
+        line_height = 10
+    return font, lines, line_height
+
+
+def _refine_bbox_height(
+    image: Image.Image,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    bg_color_hex: str,
+) -> int:
+    """Adjust the height of the bounding box to snap to background boundaries.
+    
+    Shrinks the box from the bottom if it overfills into a different colored
+    region, and expands the box downwards to cover text descenders (like 'p')
+    if the region below shares the same background color.
+    """
+    rgb_image = image.convert("RGB")
+    br, bg, bb = hex_to_rgb(bg_color_hex)
+
+    def row_matches_bg(row_y: int) -> bool:
+        if row_y < 0 or row_y >= rgb_image.height:
+            return False
+        matches = 0
+        total = 0
+        # Check a sample of pixels across the row
+        for px in range(x, x + w, max(1, w // 20)):
+            if px >= rgb_image.width:
+                break
+            pr, pg, pb = rgb_image.getpixel((px, row_y))  # type: ignore[arg-type]
+            # Manhattan distance in RGB space
+            dist = abs(pr - br) + abs(pg - bg) + abs(pb - bb)
+            if dist < 80:  # Tolerance for compression artifacts and noise
+                matches += 1
+            total += 1
+        if total == 0:
+            return False
+        return matches / total >= 0.5
+
+    # 1. Shrink from bottom if overfilling into a different background
+    while h > 10 and not row_matches_bg(y + h - 1):
+        h -= 1
+
+    # 2. Expand bottom to cover descenders (e.g. 'p', 'y', 'g')
+    expanded = 0
+    max_expand = max(10, int(h * 0.4))
+    while expanded < max_expand and row_matches_bg(y + h):
+        h += 1
+        expanded += 1
+
+    return h
+
+
 def _draw_translated_text(
     image: Image.Image,
     text: str,
@@ -179,38 +299,18 @@ def _draw_translated_text(
     if w <= 0 or h <= 0 or not text.strip():
         return image
 
-    # --- Font size --------------------------------------------------------
-    font_size = calculate_font_size(
+    # --- Font sizing and wrapping -----------------------------------------
+    font, lines, line_height = _find_best_font_and_wrap(
         text=text,
-        bbox_width_px=w,
-        bbox_height_px=h,
+        w=w,
+        h=h,
         is_bold=is_bold,
         font_size_relative=font_size_relative,
-        font_loader=lambda size: _load_font(size=size, is_bold=is_bold),
     )
-    font = _load_font(size=font_size, is_bold=is_bold)
-
-    # --- Text wrapping ----------------------------------------------------
-    # Estimate average character width using a representative sample string
-    try:
-        sample_bbox = font.getbbox("W")
-        avg_char_w = max(1, sample_bbox[2] - sample_bbox[0])
-    except AttributeError:
-        avg_char_w = font_size  # safe fallback for bitmap fonts
-
-    max_chars = max(1, int(w * 0.95 / avg_char_w))
-    wrapped = textwrap.fill(text, width=max_chars)
-    lines = wrapped.splitlines() or [text]
-
-    # --- Line height ------------------------------------------------------
-    try:
-        line_bbox = font.getbbox("Ag")
-        line_height = line_bbox[3] - line_bbox[1] + 2
-    except AttributeError:
-        line_height = font_size + 2
 
     # --- Vertical centering: start y so the block sits in the middle ------
     total_text_height = line_height * len(lines)
+    # add a slight vertical offset adjustment to account for font ascenders
     current_y = y + max(0, (h - total_text_height) // 2)
 
     # --- Colour -----------------------------------------------------------
@@ -226,15 +326,7 @@ def _draw_translated_text(
         if current_y + line_height > y + h:
             break  # no more room vertically
 
-        # Determine x anchor based on alignment
-        try:
-            line_w = font.getlength(line)
-        except AttributeError:
-            try:
-                line_bbox_item = font.getbbox(line)
-                line_w = line_bbox_item[2] - line_bbox_item[0]
-            except AttributeError:
-                line_w = len(line) * avg_char_w
+        line_w = _get_text_width(font, line)
 
         if pil_align == "center":
             line_x = x + (w - line_w) // 2
@@ -340,9 +432,17 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
             h_px = max(1, min(h_px, img_h - y_px))
             clamped_bbox = (x_px, y_px, w_px, h_px)
 
+            # Sample the actual background color from the edges
+            sampled_bg = sample_background_color(pil_image, x_px, y_px, w_px, h_px)
+
+            # Refine the bounding box height to fix overfilling and descender clipping
+            h_px = _refine_bbox_height(pil_image, x_px, y_px, w_px, h_px, sampled_bg)
+            h_px = max(1, min(h_px, img_h - y_px))
+            clamped_bbox = (x_px, y_px, w_px, h_px)
+
             # Cover original text
             working = _cover_original_text(
-                working, clamped_bbox, block.background_color
+                working, clamped_bbox, sampled_bg
             )
 
             # Draw translated text

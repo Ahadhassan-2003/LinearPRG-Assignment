@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import base64
 import io
-import typing
-from collections import Counter
+from collections import Counter, defaultdict
 
 from PIL import Image, ImageFont
 
@@ -104,8 +103,73 @@ def image_bytes_to_base64_uri(
 
 
 # ---------------------------------------------------------------------------
-# Color conversion
+# Color conversion and sampling
 # ---------------------------------------------------------------------------
+
+
+def sample_background_color(
+    image: Image.Image,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    sample_padding: int = 5,
+) -> str:
+    """Estimate the dominant background colour around a bounding box.
+
+    A border strip of ``sample_padding`` pixels is taken *outside* the supplied
+    bounding box (clamped to the image canvas). The most frequently occurring
+    quantised RGB colour in that strip is returned.
+    """
+    try:
+        img_w, img_h = image.size
+        rgb_image = image.convert("RGB")
+
+        # Outer rectangle (clamped to canvas)
+        outer_x1 = max(0, x - sample_padding)
+        outer_y1 = max(0, y - sample_padding)
+        outer_x2 = min(img_w, x + w + sample_padding)
+        outer_y2 = min(img_h, y + h + sample_padding)
+
+        # Inner rectangle (the actual bbox, clamped)
+        inner_x1 = max(0, x)
+        inner_y1 = max(0, y)
+        inner_x2 = min(img_w, x + w)
+        inner_y2 = min(img_h, y + h)
+
+        if outer_x2 <= outer_x1 or outer_y2 <= outer_y1:
+            return "#FFFFFF"
+
+        pixels: list[tuple[int, int, int]] = []
+
+        for py in range(outer_y1, outer_y2):
+            for px in range(outer_x1, outer_x2):
+                # Skip pixels that are inside the inner (text) box
+                if inner_x1 <= px < inner_x2 and inner_y1 <= py < inner_y2:
+                    continue
+                pixels.append(rgb_image.getpixel((px, py)))  # type: ignore[arg-type]
+
+        if not pixels:
+            return "#FFFFFF"
+
+        # Group near-identical colours together using a coarse quantization
+        color_bins: dict[tuple[int, int, int], list[tuple[int, int, int]]] = defaultdict(list)
+        for r, g, b in pixels:
+            q = (r & 0xF0, g & 0xF0, b & 0xF0)
+            color_bins[q].append((r, g, b))
+
+        # Find the most frequent quantised bucket
+        dominant_bin = max(color_bins.values(), key=len)
+
+        # Compute the exact mean of all actual pixels that fell into that bucket
+        avg_r = sum(c[0] for c in dominant_bin) // len(dominant_bin)
+        avg_g = sum(c[1] for c in dominant_bin) // len(dominant_bin)
+        avg_b = sum(c[2] for c in dominant_bin) // len(dominant_bin)
+
+        return "#{:02X}{:02X}{:02X}".format(avg_r, avg_g, avg_b)
+
+    except Exception:
+        return "#FFFFFF"
 
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -134,95 +198,6 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
             f"hex_color contains non-hex characters: {hex_color!r}"
         ) from exc
     return r, g, b
-
-
-# ---------------------------------------------------------------------------
-# Font sizing
-# ---------------------------------------------------------------------------
-
-
-def calculate_font_size(
-    text: str,
-    bbox_width_px: int,
-    bbox_height_px: int,
-    is_bold: bool,
-    font_size_relative: str,
-    min_size: int = 8,
-    max_size: int = 72,
-    font_loader: typing.Callable[[int], ImageFont.FreeTypeFont | ImageFont.ImageFont] | None = None,
-) -> int:
-    """Estimate an integer font size that fits ``text`` inside a bounding box.
-
-    The function starts from a seed size derived from ``font_size_relative``
-    (``"large"`` → 36, ``"medium"`` → 24, ``"small"`` → 14), then iteratively
-    reduces the size until the rendered text width fits within 95 % of
-    ``bbox_width_px``. Because PIL's built-in default font is bitmap-only and
-    not resizable, :func:`ImageFont.load_default` is used purely for the
-    character-width heuristic; the returned integer is still meaningful as a
-    point/pixel size hint for downstream rendering with a scalable font.
-
-    Args:
-        text: The string whose rendered width is being estimated.
-        bbox_width_px: Available width in pixels.
-        bbox_height_px: Available height in pixels (currently used only to
-            bound the starting size).
-        is_bold: Whether bold weight should influence the size estimate.
-            Bold text is assumed to be ~10 % wider per character.
-        font_size_relative: One of ``"large"``, ``"medium"``, or ``"small"``.
-            Controls the starting point for the search.
-        min_size: Minimum font size to return. Defaults to ``8``.
-        max_size: Maximum font size to consider. Defaults to ``72``.
-
-    Returns:
-        The largest integer font size (≥ ``min_size``) at which the text is
-        estimated to fit within ``bbox_width_px * 0.95`` pixels of width.
-    """
-    _SEED: dict[str, int] = {"large": 36, "medium": 24, "small": 14}
-    seed = _SEED.get(font_size_relative, 24)
-
-    # Clamp seed to [min_size, max_size] and also to bbox height
-    size = min(seed, max_size, max(bbox_height_px, min_size))
-    size = max(size, min_size)
-
-    # Bold heuristic: assume glyphs are ~10 % wider
-    bold_factor = 1.10 if is_bold else 1.0
-
-    # Use the provided font loader if available; otherwise fall back to default
-    def _measure(candidate_size: int) -> float:
-        if font_loader:
-            font = font_loader(candidate_size)
-            try:
-                try:
-                    return float(font.getlength(text))
-                except AttributeError:
-                    bbox = font.getbbox(text)
-                    return float(bbox[2] - bbox[0])
-            except AttributeError:
-                pass  # Fall back to default measurement for bitmap fonts
-
-        try:
-            font = ImageFont.load_default(size=candidate_size)
-        except TypeError:
-            font = ImageFont.load_default()
-
-        # getbbox is available on FreeType fonts; for bitmap fonts fall back
-        # to a fixed-width estimate.
-        try:
-            bbox = font.getbbox(text)
-            text_width = bbox[2] - bbox[0]
-        except AttributeError:
-            # Bitmap default font: roughly 6 px per character
-            text_width = len(text) * 6
-
-        return text_width * bold_factor
-
-    target_width = bbox_width_px * 0.95
-
-    # Reduce size until it fits or we hit min_size
-    while size > min_size and _measure(size) > target_width:
-        size -= 1
-
-    return size
 
 
 # ---------------------------------------------------------------------------

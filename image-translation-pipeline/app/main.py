@@ -262,10 +262,12 @@ async def translate_image(
     )
 
     media_type = "image/jpeg" if fmt.upper() == "JPEG" else "image/png"
+    extension = "jpg" if fmt.upper() == "JPEG" else "png"
     return Response(
         content=output_bytes,
         media_type=media_type,
         headers={
+            "Content-Disposition": f'attachment; filename="translated_image.{extension}"',
             "X-Detected-Language": detected_language,
             "X-Text-Blocks-Found": str(len(text_blocks)),
             "X-Pipeline-Version": VERSION,
