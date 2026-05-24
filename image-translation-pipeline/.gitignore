@@ -16,6 +16,7 @@ __pycache__/
 .pytest_cache/
 
 # Generated output images (keep the directory, ignore its contents)
-output_images/*.png
+output_images/*
+!output_images/.gitkeep
 
 # Note: uv.lock is intentionally NOT ignored — it should be committed.

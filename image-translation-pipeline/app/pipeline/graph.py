@@ -29,18 +29,7 @@ from app.pipeline.nodes.reconstructor import reconstruct_image_node
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# LangSmith environment configuration (set once at module import time)
-# ---------------------------------------------------------------------------
-
-if settings.LANGCHAIN_TRACING_V2:
-    os.environ["LANGCHAIN_TRACING_V2"] = settings.LANGCHAIN_TRACING_V2
-
-if settings.LANGCHAIN_PROJECT:
-    os.environ["LANGCHAIN_PROJECT"] = settings.LANGCHAIN_PROJECT
-
-if settings.LANGCHAIN_API_KEY:
-    os.environ["LANGCHAIN_API_KEY"] = settings.LANGCHAIN_API_KEY
+from functools import lru_cache
 
 # ---------------------------------------------------------------------------
 # Conditional edge
@@ -103,8 +92,10 @@ _builder.add_conditional_edges(
 # Terminal edge: reconstruct → END
 _builder.add_edge("reconstruct", END)
 
-# Compiled graph — module-level singleton
-pipeline = _builder.compile()
+@lru_cache(maxsize=1)
+def get_pipeline():
+    """Lazily compile the graph so startup isn't aborted by import errors."""
+    return _builder.compile()
 
 # ---------------------------------------------------------------------------
 # Public run_pipeline helper
@@ -118,6 +109,7 @@ def run_pipeline(
     image_height: int,
     image_format: str,
     target_language: str = "English",
+    source_language: str = "auto",
 ) -> dict[str, Any]:
     """Run the full image translation pipeline as a single LangSmith trace.
 
@@ -136,6 +128,8 @@ def run_pipeline(
             ``"PNG"``, ``"JPEG"``).
         target_language: Human-readable name of the language to translate
             text into. Defaults to ``"English"``.
+        source_language: Human-readable name of the source language, or
+            ``"auto"``. Defaults to ``"auto"``.
 
     Returns:
         The final :class:`~app.models.PipelineState` dict after all nodes
@@ -150,20 +144,20 @@ def run_pipeline(
         "text_blocks": None,
         "output_image_bytes": None,
         "error": None,
-        # target_language is not a PipelineState field — it is threaded
-        # through as an extra key that the extractor node reads via
-        # state.get("target_language").
-        "target_language": target_language,  # type: ignore[typeddict-unknown-key]
+        "target_language": target_language,
+        "source_language": source_language,
     }
 
     logger.info(
-        "Starting pipeline: format=%s size=%dx%d target_language=%r",
+        "Starting pipeline: format=%s size=%dx%d target_language=%r source_language=%r",
         image_format,
         image_width,
         image_height,
         target_language,
+        source_language,
     )
 
+    pipeline = get_pipeline()
     final_state: dict[str, Any] = pipeline.invoke(initial_state)
 
     if final_state.get("error"):

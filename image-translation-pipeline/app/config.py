@@ -1,8 +1,8 @@
 """Application settings loaded from environment variables via pydantic-settings."""
 
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
 
 
 class Settings(BaseSettings):
@@ -13,8 +13,10 @@ class Settings(BaseSettings):
 
     Attributes:
         ANTHROPIC_API_KEY: Secret key for authenticating with the Anthropic API.
+            Optional at import time; validated at request time.
         LANGCHAIN_API_KEY: Secret key for LangSmith tracing and observability.
-        LANGCHAIN_TRACING_V2: Enables LangSmith trace upload when ``"true"``.
+            Optional at import time; only needed when tracing is enabled.
+        LANGCHAIN_TRACING_V2: Enables LangSmith trace upload when ``\"true\"``.
         LANGCHAIN_PROJECT: Project name shown in the LangSmith dashboard.
         MAX_IMAGE_SIZE_MB: Maximum permitted upload size in megabytes.
         DEFAULT_TARGET_LANGUAGE: Fallback translation target when the caller
@@ -25,11 +27,12 @@ class Settings(BaseSettings):
             may generate in a single response.
     """
 
-    # Anthropic API key for Claude models
-    ANTHROPIC_API_KEY: str
+    # Made optional so the app can start and tests can run without a real .env.
+    # The extractor validates the key is present at request time.
+    ANTHROPIC_API_KEY: str | None = None
 
-    # LangSmith API key for tracing and observability
-    LANGCHAIN_API_KEY: str
+    # Optional — only needed when LANGCHAIN_TRACING_V2 is "true".
+    LANGCHAIN_API_KEY: str | None = None
 
     # Enable LangSmith tracing
     LANGCHAIN_TRACING_V2: str = "true"
@@ -56,3 +59,21 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ---------------------------------------------------------------------------
+# LangSmith / LangChain env-var bootstrap  (fix #7)
+# ---------------------------------------------------------------------------
+# These MUST be written to os.environ BEFORE any LangChain object
+# (ChatAnthropic, etc.) is constructed, because LangChain reads them at
+# instantiation time.  config.py is always the first app module imported,
+# so setting them here guarantees they are present when extractor.py's
+# module-level ``_llm`` is built.
+
+if settings.LANGCHAIN_TRACING_V2:
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", settings.LANGCHAIN_TRACING_V2)
+if settings.LANGCHAIN_PROJECT:
+    os.environ.setdefault("LANGCHAIN_PROJECT", settings.LANGCHAIN_PROJECT)
+if settings.LANGCHAIN_API_KEY:
+    os.environ.setdefault("LANGCHAIN_API_KEY", settings.LANGCHAIN_API_KEY)
+if settings.ANTHROPIC_API_KEY:
+    os.environ.setdefault("ANTHROPIC_API_KEY", settings.ANTHROPIC_API_KEY)

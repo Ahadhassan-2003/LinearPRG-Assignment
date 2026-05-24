@@ -34,7 +34,10 @@ from __future__ import annotations
 
 import logging
 import warnings
+from functools import lru_cache
 from typing import Any
+
+warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
@@ -43,6 +46,7 @@ from pydantic import ValidationError
 
 from app.models import PipelineState, TextBlock
 from app.utils.image_utils import image_bytes_to_base64_uri
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +66,8 @@ For each text region return a JSON object with EXACTLY these fields:
   - original_text   : the exact text as it appears in the image (preserve \
 brand names, measurements, symbols, and punctuation unchanged)
   - translated_text : a natural, idiomatic translation into {target_language} \
-(not word-by-word). If the text is already in {target_language} or is a brand \
+(not word-by-word). Consider that the original text is in {source_language}. \
+If the text is already in {target_language} or is a brand \
 name / number / symbol that should not be translated, set translated_text \
 identical to original_text.
   - bbox            : object with keys x, y, width, height expressed as \
@@ -98,34 +103,36 @@ this exact structure:
 # LangChain objects (module-level, constructed once)
 # ---------------------------------------------------------------------------
 
-_llm = ChatAnthropic(
-    model="claude-sonnet-4-5",
-    temperature=0,
-    max_tokens=4096,
-)
+@lru_cache(maxsize=1)
+def _get_chain():
+    llm = ChatAnthropic(
+        model=settings.EXTRACTION_CLAUDE_MODEL,
+        temperature=0,
+        max_tokens=settings.EXTRACTION_MAX_TOKENS,
+    )
 
-_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", EXTRACTION_PROMPT_TEMPLATE),
-        (
-            "human",
-            [
-                # Vision content block — image is injected at runtime
-                {
-                    "type": "image_url",
-                    "image_url": {"url": "{image_uri}"},
-                },
-                # Text instruction with target_language variable
-                {
-                    "type": "text",
-                    "text": _HUMAN_INSTRUCTION,
-                },
-            ],
-        ),
-    ]
-)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", EXTRACTION_PROMPT_TEMPLATE),
+            (
+                "human",
+                [
+                    # Vision content block — image is injected at runtime
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "{image_uri}"},
+                    },
+                    # Text instruction with target_language variable
+                    {
+                        "type": "text",
+                        "text": _HUMAN_INSTRUCTION,
+                    },
+                ],
+            ),
+        ]
+    )
 
-_chain = _prompt | _llm | JsonOutputParser()
+    return prompt | llm | JsonOutputParser()
 
 # ---------------------------------------------------------------------------
 # Node function
@@ -157,28 +164,30 @@ def extract_and_translate_node(state: PipelineState) -> dict[str, Any]:
           - ``"text_blocks"`` (list[TextBlock]): validated text blocks.
           - ``"error"`` (str | None): ``None`` on success, error message on failure.
     """
-    # Suppress noisy LangChain beta warnings in the node scope
-    warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
-
     try:
         # ------------------------------------------------------------------
         # 1. Prepare image URI
         # ------------------------------------------------------------------
         image_bytes: bytes = state["image_bytes"]
-        image_uri = image_bytes_to_base64_uri(image_bytes, mime_type="image/png")
+        fmt = state.get("image_format") or "PNG"
+        mime_type = f"image/{fmt.lower()}"
+        image_uri = image_bytes_to_base64_uri(image_bytes, mime_type=mime_type)
 
         # ------------------------------------------------------------------
-        # 2. Resolve target language from state or fall back to "English"
+        # 2. Resolve target and source languages from state
         # ------------------------------------------------------------------
-        target_language: str = state.get("target_language", "English") or "English"  # type: ignore[assignment]
+        target_language: str = state.get("target_language") or "English"
+        source_language: str = state.get("source_language") or "auto"
 
         # ------------------------------------------------------------------
         # 3. Invoke the LangChain chain
         # ------------------------------------------------------------------
-        raw_response: dict[str, Any] = _chain.invoke(
+        chain = _get_chain()
+        raw_response: dict[str, Any] = chain.invoke(
             {
                 "image_uri": image_uri,
                 "target_language": target_language,
+                "source_language": source_language,
             }
         )
 

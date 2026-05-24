@@ -88,9 +88,9 @@ class TestExtractAndTranslateNode:
         mock_chain.invoke.return_value = _CHAIN_SUCCESS_RESPONSE
 
         with patch(
-            "app.pipeline.nodes.extractor._chain",
-            new=mock_chain,
-        ):
+            "app.pipeline.nodes.extractor._get_chain"
+        ) as mock_get_chain:
+            mock_get_chain.return_value = mock_chain
             result = extract_and_translate_node(state)
 
         assert result["detected_language"] == "Spanish"
@@ -123,9 +123,9 @@ class TestExtractAndTranslateNode:
         mock_chain.invoke.side_effect = Exception("API error")
 
         with patch(
-            "app.pipeline.nodes.extractor._chain",
-            new=mock_chain,
-        ):
+            "app.pipeline.nodes.extractor._get_chain"
+        ) as mock_get_chain:
+            mock_get_chain.return_value = mock_chain
             result = extract_and_translate_node(state)
 
         assert "API error" in result["error"]
@@ -161,7 +161,8 @@ class TestExtractAndTranslateNode:
             "error": None,
         }
 
-        with patch("app.pipeline.nodes.extractor._chain", new=mock_chain):
+        with patch("app.pipeline.nodes.extractor._get_chain") as mock_get_chain:
+            mock_get_chain.return_value = mock_chain
             with caplog.at_level(logging.WARNING, logger="app.pipeline.nodes.extractor"):
                 result = extract_and_translate_node(state)
 

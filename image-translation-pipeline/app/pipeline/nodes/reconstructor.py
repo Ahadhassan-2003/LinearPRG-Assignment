@@ -41,6 +41,7 @@ import logging
 import textwrap
 from pathlib import Path
 from typing import Any
+import io
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -140,7 +141,7 @@ def _cover_original_text(
         fill = (*rgb, 255)
 
     draw = ImageDraw.Draw(image)
-    draw.rectangle([x, y, x + w, y + h], fill=fill)  # type: ignore[arg-type]
+    draw.rectangle([x, y, x + w - 1, y + h - 1], fill=fill)  # type: ignore[arg-type]
     return image
 
 
@@ -185,6 +186,7 @@ def _draw_translated_text(
         bbox_height_px=h,
         is_bold=is_bold,
         font_size_relative=font_size_relative,
+        font_loader=lambda size: _load_font(size=size, is_bold=is_bold),
     )
     font = _load_font(size=font_size, is_bold=is_bold)
 
@@ -296,7 +298,11 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
         # ---------------------------------------------------------------
         # 1. Load source image and convert to RGBA for safe compositing
         # ---------------------------------------------------------------
-        pil_image, fmt, img_w, img_h = load_image_from_bytes(image_bytes)
+        pil_image = Image.open(io.BytesIO(image_bytes))
+        img_w = state.get("image_width")
+        img_h = state.get("image_height")
+        if img_w is None or img_h is None:
+            img_w, img_h = pil_image.size
         working: Image.Image = pil_image.convert("RGBA")
 
         # ---------------------------------------------------------------

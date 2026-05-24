@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import base64
 import io
+import typing
 from collections import Counter
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageFont
 
 
 # ---------------------------------------------------------------------------
@@ -99,79 +100,7 @@ def image_bytes_to_base64_uri(
     return f"data:{mime_type};base64,{b64}"
 
 
-# ---------------------------------------------------------------------------
-# Color sampling
-# ---------------------------------------------------------------------------
 
-
-def sample_background_color(
-    image: Image.Image,
-    x: int,
-    y: int,
-    w: int,
-    h: int,
-    sample_padding: int = 5,
-) -> str:
-    """Estimate the dominant background colour around a bounding box.
-
-    A border strip of ``sample_padding`` pixels is taken *outside* the supplied
-    bounding box (clamped to the image canvas). The most frequently occurring
-    quantised RGB colour in that strip is returned.
-
-    Args:
-        image: Source PIL ``Image`` from which to sample.
-        x: Left edge of the text bounding box in pixels.
-        y: Top edge of the text bounding box in pixels.
-        w: Width of the text bounding box in pixels.
-        h: Height of the text bounding box in pixels.
-        sample_padding: Number of pixels to expand outward from the bbox
-            when defining the border sampling region. Defaults to ``5``.
-
-    Returns:
-        A hex colour string such as ``"#2D5016"`` representing the dominant
-        colour in the sampled border. Returns ``"#FFFFFF"`` if sampling fails
-        for any reason (e.g. the box is entirely outside the image canvas).
-    """
-    try:
-        img_w, img_h = image.size
-        rgb_image = image.convert("RGB")
-
-        # Outer rectangle (clamped to canvas)
-        outer_x1 = max(0, x - sample_padding)
-        outer_y1 = max(0, y - sample_padding)
-        outer_x2 = min(img_w, x + w + sample_padding)
-        outer_y2 = min(img_h, y + h + sample_padding)
-
-        # Inner rectangle (the actual bbox, clamped)
-        inner_x1 = max(0, x)
-        inner_y1 = max(0, y)
-        inner_x2 = min(img_w, x + w)
-        inner_y2 = min(img_h, y + h)
-
-        if outer_x2 <= outer_x1 or outer_y2 <= outer_y1:
-            return "#FFFFFF"
-
-        pixels: list[tuple[int, int, int]] = []
-
-        for py in range(outer_y1, outer_y2):
-            for px in range(outer_x1, outer_x2):
-                # Skip pixels that are inside the inner (text) box
-                if inner_x1 <= px < inner_x2 and inner_y1 <= py < inner_y2:
-                    continue
-                pixels.append(rgb_image.getpixel((px, py)))  # type: ignore[arg-type]
-
-        if not pixels:
-            return "#FFFFFF"
-
-        # Quantise to multiples of 8 to group near-identical colours together
-        quantised = [
-            (r & 0xF8, g & 0xF8, b & 0xF8) for r, g, b in pixels
-        ]
-        dominant = Counter(quantised).most_common(1)[0][0]
-        return "#{:02X}{:02X}{:02X}".format(*dominant)
-
-    except Exception:
-        return "#FFFFFF"
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +149,7 @@ def calculate_font_size(
     font_size_relative: str,
     min_size: int = 8,
     max_size: int = 72,
+    font_loader: typing.Callable[[int], ImageFont.FreeTypeFont | ImageFont.ImageFont] | None = None,
 ) -> int:
     """Estimate an integer font size that fits ``text`` inside a bounding box.
 
@@ -257,10 +187,19 @@ def calculate_font_size(
     # Bold heuristic: assume glyphs are ~10 % wider
     bold_factor = 1.10 if is_bold else 1.0
 
-    # Use the default PIL font to obtain an approximate character width.
-    # load_default() accepts a 'size' kwarg in Pillow >= 10; fall back
-    # gracefully for older versions.
+    # Use the provided font loader if available; otherwise fall back to default
     def _measure(candidate_size: int) -> float:
+        if font_loader:
+            font = font_loader(candidate_size)
+            try:
+                try:
+                    return float(font.getlength(text))
+                except AttributeError:
+                    bbox = font.getbbox(text)
+                    return float(bbox[2] - bbox[0])
+            except AttributeError:
+                pass  # Fall back to default measurement for bitmap fonts
+
         try:
             font = ImageFont.load_default(size=candidate_size)
         except TypeError:

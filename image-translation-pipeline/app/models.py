@@ -142,7 +142,10 @@ class TextBlock(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class PipelineState(TypedDict, total=False):
+class _PipelineStateRequired(TypedDict):
+    image_bytes: bytes
+
+class PipelineState(_PipelineStateRequired, total=False):
     """Mutable state object threaded through every node of the LangGraph pipeline.
 
     ``image_bytes`` is the only mandatory key; all other keys default to
@@ -162,16 +165,18 @@ class PipelineState(TypedDict, total=False):
             image produced by the reconstructor node.
         error: Human-readable error message set by any node that encounters a
             non-recoverable failure; ``None`` when the pipeline is healthy.
+        target_language: Requested target language.
+        source_language: Hint for the source language, or "auto".
     """
-
-    image_bytes: bytes  # Required — no NotRequired wrapper
-    image_width: NotRequired[int | None]
-    image_height: NotRequired[int | None]
-    image_format: NotRequired[str | None]
-    detected_language: NotRequired[str | None]
-    text_blocks: NotRequired[list[TextBlock] | None]
-    output_image_bytes: NotRequired[bytes | None]
-    error: NotRequired[str | None]
+    image_width: int | None
+    image_height: int | None
+    image_format: str | None
+    detected_language: str | None
+    text_blocks: list[TextBlock] | None
+    output_image_bytes: bytes | None
+    error: str | None
+    target_language: str | None
+    source_language: str | None
 
 
 # ---------------------------------------------------------------------------
@@ -179,19 +184,7 @@ class PipelineState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 
 
-class TranslationRequest(BaseModel):
-    """Parameters submitted alongside an uploaded image for translation.
 
-    Attributes:
-        target_language: Human-readable name of the language to translate
-            text into. Defaults to ``"English"``.
-        source_language: Human-readable name of the source language, or
-            ``"auto"`` to let the pipeline detect it automatically.
-            Defaults to ``"auto"``.
-    """
-
-    target_language: str = "English"
-    source_language: str = "auto"
 
 
 class TranslationResponse(BaseModel):

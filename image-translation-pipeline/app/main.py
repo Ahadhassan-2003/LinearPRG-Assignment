@@ -178,7 +178,7 @@ async def health_check() -> dict[str, Any]:
 
 
 @app.post(
-    "/translate-image",
+    "/v1/translate-image",
     summary="Translate image text (returns image)",
     response_class=Response,
     responses={
@@ -239,6 +239,7 @@ async def translate_image(
         image_height=height,
         image_format=fmt,
         target_language=target_language,
+        source_language=source_language,
     )
 
     if final_state.get("error"):
@@ -260,9 +261,10 @@ async def translate_image(
         detected_language, len(text_blocks), len(output_bytes),
     )
 
+    media_type = "image/jpeg" if fmt.upper() == "JPEG" else "image/png"
     return Response(
         content=output_bytes,
-        media_type="image/png",
+        media_type=media_type,
         headers={
             "X-Detected-Language": detected_language,
             "X-Text-Blocks-Found": str(len(text_blocks)),
@@ -272,7 +274,7 @@ async def translate_image(
 
 
 @app.post(
-    "/translate-image/json",
+    "/v1/translate-image/json",
     summary="Translate image text (returns JSON)",
     response_model=TranslationResponse,
 )
@@ -327,6 +329,7 @@ async def translate_image_json(
         image_height=height,
         image_format=fmt,
         target_language=target_language,
+        source_language=source_language,
     )
 
     text_blocks = final_state.get("text_blocks") or []
