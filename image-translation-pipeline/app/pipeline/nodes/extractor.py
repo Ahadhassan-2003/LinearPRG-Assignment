@@ -143,10 +143,13 @@ def _get_chain():
 # OCR Helpers
 # ---------------------------------------------------------------------------
 
-def _extract_tesseract_lines(image_bytes: bytes) -> list[dict]:
+def _extract_tesseract_lines(image_bytes: bytes, lang: str | None = None) -> list[dict]:
     """Extract line-level bounding boxes and text from an image using Tesseract."""
     image = Image.open(io.BytesIO(image_bytes))
-    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+    kwargs = {"output_type": pytesseract.Output.DICT}
+    if lang:
+        kwargs["lang"] = lang
+    data = pytesseract.image_to_data(image, **kwargs)
     
     # Group words by (block_num, par_num, line_num)
     lines = {}
@@ -249,7 +252,8 @@ def extract_and_translate_node(state: PipelineState) -> dict[str, Any]:
         # ------------------------------------------------------------------
         # 5. Extract precise bounding boxes using Tesseract OCR
         # ------------------------------------------------------------------
-        tesseract_lines = _extract_tesseract_lines(image_bytes)
+        ocr_lang: str | None = state.get("ocr_lang")
+        tesseract_lines = _extract_tesseract_lines(image_bytes, lang=ocr_lang)
         img_w = state.get("image_width")
         img_h = state.get("image_height")
         if img_w is None or img_h is None:

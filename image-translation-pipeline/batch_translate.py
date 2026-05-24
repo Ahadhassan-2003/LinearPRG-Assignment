@@ -2,6 +2,7 @@ import os
 import glob
 import sys
 import json
+import argparse
 from pathlib import Path
 
 # Ensure the app module can be imported
@@ -11,6 +12,10 @@ from app.pipeline.graph import run_pipeline
 from app.utils.image_utils import load_image_from_bytes
 
 def main():
+    parser = argparse.ArgumentParser(description="Batch translate images")
+    parser.add_argument("--ocr-lang", type=str, default="spa", help="Optional language code for Tesseract OCR (e.g. 'spa', 'chi_sim')")
+    args = parser.parse_args()
+
     input_dir = r"e:\LinearPRG Assignment\sample_images_for_candidates"
     output_dir = r"e:\LinearPRG Assignment\image-translation-pipeline\batch_outputs"
     os.makedirs(output_dir, exist_ok=True)
@@ -45,6 +50,7 @@ def main():
                 image_format=fmt,
                 target_language="English",
                 source_language="auto",
+                ocr_lang=args.ocr_lang,
                 filename=os.path.basename(img_path),
             )
             

@@ -167,6 +167,7 @@ class PipelineState(_PipelineStateRequired, total=False):
             non-recoverable failure; ``None`` when the pipeline is healthy.
         target_language: Requested target language.
         source_language: Hint for the source language, or "auto".
+        ocr_lang: Optional language code for Tesseract OCR (e.g. "spa", "chi_sim").
     """
     image_width: int | None
     image_height: int | None
@@ -177,6 +178,7 @@ class PipelineState(_PipelineStateRequired, total=False):
     error: str | None
     target_language: str | None
     source_language: str | None
+    ocr_lang: str | None
 
 
 # ---------------------------------------------------------------------------

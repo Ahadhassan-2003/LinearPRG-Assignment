@@ -111,6 +111,7 @@ def run_pipeline(
     image_format: str,
     target_language: str = "English",
     source_language: str = "auto",
+    ocr_lang: str | None = None,
     filename: str | None = None,
 ) -> dict[str, Any]:
     """Run the full image translation pipeline as a single LangSmith trace.
@@ -132,6 +133,8 @@ def run_pipeline(
             text into. Defaults to ``"English"``.
         source_language: Human-readable name of the source language, or
             ``"auto"``. Defaults to ``"auto"``.
+        ocr_lang: Optional language code for Tesseract OCR.
+        filename: Optional filename for tracing.
 
     Returns:
         The final :class:`~app.models.PipelineState` dict after all nodes
@@ -153,15 +156,17 @@ def run_pipeline(
         "error": None,
         "target_language": target_language,
         "source_language": source_language,
+        "ocr_lang": ocr_lang,
     }
 
     logger.info(
-        "Starting pipeline: format=%s size=%dx%d target_language=%r source_language=%r",
+        "Starting pipeline: format=%s size=%dx%d target_language=%r source_language=%r ocr_lang=%r",
         image_format,
         image_width,
         image_height,
         target_language,
         source_language,
+        ocr_lang,
     )
 
     pipeline = get_pipeline()

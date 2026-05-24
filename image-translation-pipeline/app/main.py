@@ -192,6 +192,7 @@ async def translate_image(
     image: UploadFile,
     target_language: str = Form(default="English"),
     source_language: str = Form(default="auto"),
+    ocr_lang: str | None = Form(default=None),
 ) -> Response:
     """Translate all text in an uploaded image and return the modified image.
 
@@ -217,10 +218,11 @@ async def translate_image(
         HTTPException: 500 if the pipeline encounters an unrecoverable error.
     """
     logger.info(
-        "POST /translate-image — file=%r target_language=%r source_language=%r",
+        "POST /translate-image — file=%r target_language=%r source_language=%r ocr_lang=%r",
         image.filename,
         target_language,
         source_language,
+        ocr_lang,
     )
 
     image_bytes = await image.read()
@@ -240,6 +242,7 @@ async def translate_image(
         image_format=fmt,
         target_language=target_language,
         source_language=source_language,
+        ocr_lang=ocr_lang,
         filename=image.filename,
     )
 
@@ -285,6 +288,7 @@ async def translate_image_json(
     image: UploadFile,
     target_language: str = Form(default="English"),
     source_language: str = Form(default="auto"),
+    ocr_lang: str | None = Form(default=None),
 ) -> TranslationResponse:
     """Translate all text in an uploaded image and return a JSON response.
 
@@ -310,10 +314,11 @@ async def translate_image_json(
         HTTPException: 413 if the upload exceeds the size limit.
     """
     logger.info(
-        "POST /translate-image/json — file=%r target_language=%r source_language=%r",
+        "POST /translate-image/json — file=%r target_language=%r source_language=%r ocr_lang=%r",
         image.filename,
         target_language,
         source_language,
+        ocr_lang,
     )
 
     image_bytes = await image.read()
@@ -333,6 +338,7 @@ async def translate_image_json(
         image_format=fmt,
         target_language=target_language,
         source_language=source_language,
+        ocr_lang=ocr_lang,
         filename=image.filename,
     )
 
