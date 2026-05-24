@@ -62,6 +62,7 @@ Response headers on the binary endpoint:
 
 | Header | Example | Description |
 |---|---|---|
+| `Content-Disposition` | `attachment; filename="translated_image.png"` | Triggers automatic file download |
 | `X-Detected-Language` | `Spanish` | Primary language found in the image |
 | `X-Text-Blocks-Found` | `7` | Number of translated text regions |
 | `X-Pipeline-Version` | `0.1.0` | API version |
@@ -89,12 +90,9 @@ second API round-trip and lets the model apply context-aware translation —
 **Stage 3 — Image Reconstruction** (`reconstruct` node)
 
 Pure-Python PIL rendering with no generative components:
-1. A solid rectangle in the block's `background_color` is painted over the
-   original text, erasing it cleanly.
-2. The translated text is rendered on top using the closest available system
-   font (DejaVu → Helvetica → Arial → PIL default), scaled to fit within the
-   bounding box at 95% width, with automatic line-wrapping and
-   left/center/right alignment.
+1. The background color is accurately sampled from the pixel border surrounding the original text block. The bounding box height is dynamically adjusted to snap to sharp edge boundaries and expand downwards to safely cover typographic descenders (like 'p' or 'g').
+2. A solid rectangle in the sampled background color is painted over the original text, erasing it cleanly.
+3. The translated text is rendered on top using the closest available system font (DejaVu → Helvetica → Arial → PIL default). The font is iteratively scaled and word-wrapped to fit precisely within both the horizontal width and available multiline block height.
 
 ---
 
@@ -160,8 +158,7 @@ To view traces:
   spatial error; small, densely-packed text may have overlapping boxes.
 - **Font matching** — the pipeline uses DejaVu/Arial/Helvetica as a fallback;
   the original typeface is not detected or matched.
-- **Solid background fill** — images with gradient or textured backgrounds
-  will show a visible solid rectangle where the original text was removed.
+- **Solid background fill** — while intelligent border sampling perfectly blends text boxes on uniform backgrounds, images with complex gradients or heavy textures will still show a visible solid rectangle.
 - **Perspective and glare** — real-world photos with strong distortion, glare,
   or low contrast produce lower extraction accuracy.
 - **No batching** — the API processes one image per request; bulk translation
