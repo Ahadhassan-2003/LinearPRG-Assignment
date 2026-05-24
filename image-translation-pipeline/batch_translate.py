@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
 
     input_dir = r"e:\LinearPRG Assignment\sample_images_for_candidates"
-    output_dir = r"e:\LinearPRG Assignment\image-translation-pipeline\batch_outputs"
+    output_dir = r"e:\LinearPRG Assignment\image-translation-pipeline\translated_sample_images"
     os.makedirs(output_dir, exist_ok=True)
     
     # Find all images in the input directory
