@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Build artifacts
+*.egg-info/
+
+# Test cache
+.pytest_cache/
+
+# Generated output images (keep the directory, ignore its contents)
+output_images/*.png
+
+# Note: uv.lock is intentionally NOT ignored — it should be committed.
