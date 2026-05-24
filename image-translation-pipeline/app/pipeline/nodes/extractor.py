@@ -39,6 +39,11 @@ from typing import Any
 
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
 
+import io
+import difflib
+import pytesseract
+from PIL import Image
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_core.output_parsers import JsonOutputParser
@@ -135,6 +140,48 @@ def _get_chain():
     return prompt | llm | JsonOutputParser()
 
 # ---------------------------------------------------------------------------
+# OCR Helpers
+# ---------------------------------------------------------------------------
+
+def _extract_tesseract_lines(image_bytes: bytes) -> list[dict]:
+    """Extract line-level bounding boxes and text from an image using Tesseract."""
+    image = Image.open(io.BytesIO(image_bytes))
+    data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+    
+    # Group words by (block_num, par_num, line_num)
+    lines = {}
+    for i in range(len(data['text'])):
+        text = data['text'][i].strip()
+        if not text:
+            continue
+            
+        key = (data['block_num'][i], data['par_num'][i], data['line_num'][i])
+        x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
+        
+        if key not in lines:
+            lines[key] = {
+                'text': text,
+                'left': x,
+                'top': y,
+                'right': x + w,
+                'bottom': y + h,
+            }
+        else:
+            lines[key]['text'] += " " + text
+            lines[key]['left'] = min(lines[key]['left'], x)
+            lines[key]['top'] = min(lines[key]['top'], y)
+            lines[key]['right'] = max(lines[key]['right'], x + w)
+            lines[key]['bottom'] = max(lines[key]['bottom'], y + h)
+            
+    # Convert to a flat list with width/height
+    result = []
+    for val in lines.values():
+        val['width'] = val['right'] - val['left']
+        val['height'] = val['bottom'] - val['top']
+        result.append(val)
+    return result
+
+# ---------------------------------------------------------------------------
 # Node function
 # ---------------------------------------------------------------------------
 
@@ -200,7 +247,76 @@ def extract_and_translate_node(state: PipelineState) -> dict[str, Any]:
         raw_blocks: list[dict[str, Any]] = raw_response.get("text_blocks", [])
 
         # ------------------------------------------------------------------
-        # 5. Validate each block against the TextBlock model
+        # 5. Extract precise bounding boxes using Tesseract OCR
+        # ------------------------------------------------------------------
+        tesseract_lines = _extract_tesseract_lines(image_bytes)
+        img_w = state.get("image_width")
+        img_h = state.get("image_height")
+        if img_w is None or img_h is None:
+            # Fallback if not available in state
+            pil_img = Image.open(io.BytesIO(image_bytes))
+            img_w, img_h = pil_img.size
+
+        # ------------------------------------------------------------------
+        # 6. Match Claude text to Tesseract and override bounding boxes
+        # ------------------------------------------------------------------
+        STOP_WORDS = {"de", "la", "el", "y", "en", "un", "una", "a", "los", "las", "con", "por", "para", "su", "al", "del", "lo", "o"}
+        
+        def is_fuzzy_match(t_text: str, claude_text: str) -> bool:
+            import re
+            import difflib
+            t_clean = re.sub(r'[^\w\s]', '', t_text.lower()).strip()
+            c_clean = re.sub(r'[^\w\s]', '', claude_text.lower())
+            
+            if difflib.SequenceMatcher(None, t_clean, c_clean).ratio() >= 0.65:
+                return True
+                
+            if len(t_clean) >= 6 and t_clean in c_clean:
+                return True
+                
+            t_words = [w for w in t_clean.split() if w not in STOP_WORDS]
+            c_words = set(c_clean.split())
+            
+            if not t_words:
+                return False
+                
+            common = set(t_words).intersection(c_words)
+            ratio = len(common) / len(t_words)
+            
+            if len(t_words) <= 2:
+                return ratio == 1.0
+            return ratio >= 0.5
+
+        for raw_block in raw_blocks:
+            claude_text = raw_block.get("original_text", "").lower()
+            if not claude_text:
+                continue
+
+            matched_lines = []
+
+            for t_line in tesseract_lines:
+                if is_fuzzy_match(t_line['text'], claude_text):
+                    matched_lines.append(t_line)
+
+            if matched_lines:
+                # Merge the bounding boxes of all matched Tesseract lines
+                min_left = min(line['left'] for line in matched_lines)
+                min_top = min(line['top'] for line in matched_lines)
+                max_right = max(line['right'] for line in matched_lines)
+                max_bottom = max(line['bottom'] for line in matched_lines)
+                
+                raw_block["bbox"] = {
+                    "x": (min_left / img_w) * 100.0,
+                    "y": (min_top / img_h) * 100.0,
+                    "width": ((max_right - min_left) / img_w) * 100.0,
+                    "height": ((max_bottom - min_top) / img_h) * 100.0,
+                }
+                logger.info("Matched Claude text %r to %d Tesseract lines", raw_block["original_text"], len(matched_lines))
+            else:
+                logger.warning("No Tesseract match for %r (using LLM fallback bbox)", raw_block.get("original_text"))
+
+        # ------------------------------------------------------------------
+        # 7. Validate each block against the TextBlock model
         # ------------------------------------------------------------------
         validated_blocks: list[TextBlock] = []
         for idx, raw_block in enumerate(raw_blocks):
