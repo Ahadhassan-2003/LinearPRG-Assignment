@@ -1,8 +1,33 @@
 """Extraction and translation node for the image translation pipeline.
 
-This node sends the input image to Claude claude-sonnet-4-5 via LangChain's vision
-interface and receives a structured JSON response describing every text region
-found in the image, along with its translated text and visual metadata.
+**What this module does**
+
+Sends the raw image bytes held in ``PipelineState["image_bytes"]`` to
+Claude claude-sonnet-4-5 via a single LangChain vision call. The model analyses the
+image, extracts every visible text region with spatial and typographic
+metadata, and simultaneously translates the text into the requested target
+language — all in one API round-trip.
+
+**Inputs (read from PipelineState)**
+
+- ``image_bytes`` *(bytes, required)* — raw bytes of the source image.
+- ``target_language`` *(str, optional)* — human-readable translation target
+  (e.g. ``"English"``). Falls back to ``"English"`` if absent.
+
+**Outputs (partial state update dict)**
+
+- ``detected_language`` *(str)* — primary language identified in the image.
+- ``text_blocks`` *(list[TextBlock])* — validated text regions, each carrying
+  original text, translated text, a percentage-based bounding box, and
+  typographic hints (size, bold, colour, alignment).
+- ``error`` *(str | None)* — ``None`` on success; error message string on
+  any unrecoverable failure (API error, JSON parse failure, etc.).
+
+**LangSmith span name**: ``"extract_and_translate"``
+
+The function's ``__name__`` is overridden to this value so that every
+invocation appears under a clean, human-readable label in LangSmith traces
+rather than the full module-qualified name.
 """
 
 from __future__ import annotations

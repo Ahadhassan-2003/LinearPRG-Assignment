@@ -1,9 +1,38 @@
 """Image reconstruction node for the image translation pipeline.
 
-This node iterates over every validated TextBlock in the pipeline state,
-covers the original text region with a solid filled rectangle, then draws the
-translated text on top using PIL. The result is serialised back to bytes and
-stored as ``output_image_bytes`` in the pipeline state.
+**What this module does**
+
+Takes the list of validated ``TextBlock`` objects stored in
+``PipelineState["text_blocks"]`` and paints the translated text onto a copy
+of the source image. For each block it:
+
+1. Draws a solid filled rectangle in ``background_color`` over the original
+   text region, erasing it cleanly.
+2. Renders ``translated_text`` over the rectangle using the block's
+   typographic metadata (relative font size, bold, colour, alignment).
+
+Blocks are processed from largest to smallest bounding-box area so that
+smaller blocks are drawn last and always appear on top when regions overlap.
+
+**Inputs (read from PipelineState)**
+
+- ``image_bytes`` *(bytes, required)* — raw bytes of the source image.
+- ``image_format`` *(str)* — Pillow format string (``"PNG"``, ``"JPEG"``).
+- ``image_width`` / ``image_height`` *(int)* — pixel dimensions of the image.
+- ``text_blocks`` *(list[TextBlock])* — validated blocks from the extractor node.
+- ``error`` *(str | None)* — if non-``None``, the node returns immediately
+  without modifying anything (transparent pass-through).
+
+**Outputs (partial state update dict)**
+
+- ``output_image_bytes`` *(bytes)* — serialised PNG (or JPEG) of the
+  reconstructed image.
+- ``error`` *(str | None)* — ``None`` on success; error message on failure.
+
+**LangSmith span name**: ``"reconstruct_image"``
+
+The function's ``__name__`` is overridden to this value so that it appears
+under a clean label in LangSmith traces.
 """
 
 from __future__ import annotations
