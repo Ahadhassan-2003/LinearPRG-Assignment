@@ -80,19 +80,17 @@ Response headers on the binary endpoint:
 
 **Stage 1 + 2 — Extraction & Translation** (`extract_and_translate` node)
 
-A single Claude claude-sonnet-4-5 vision call analyses the image and returns a
-structured JSON object containing every text block with its bounding box
-(as percentages of image width/height), typographic metadata, original text,
-and translation. Combining extraction and translation into one call avoids a
-second API round-trip and lets the model apply context-aware translation —
-"Extra Virgin Olive Oil" rather than the word-by-word "Oil Olive Virgin Extra".
+This stage uses a hybrid approach:
+1. A Claude `claude-sonnet-4-5` vision call analyses the image and returns a structured JSON object containing every text block with typographic metadata, original text, and an idiomatic translation.
+2. `pytesseract` (Tesseract OCR) runs locally to extract pixel-perfect bounding boxes for every word.
+3. A robust fuzzy matching algorithm maps the fragmented Tesseract OCR boxes back to Claude's translated paragraphs. This guarantees sub-pixel bounding box accuracy without sacrificing Claude's superior context-aware translation ("Extra Virgin Olive Oil" rather than the word-by-word "Oil Olive Virgin Extra").
 
 **Stage 3 — Image Reconstruction** (`reconstruct` node)
 
 Pure-Python PIL rendering with no generative components:
-1. The background color is accurately sampled from the pixel border surrounding the original text block. The bounding box height is dynamically adjusted to snap to sharp edge boundaries and expand downwards to safely cover typographic descenders (like 'p' or 'g').
-2. A solid rectangle in the sampled background color is painted over the original text, erasing it cleanly.
-3. The translated text is rendered on top using the closest available system font (DejaVu → Helvetica → Arial → PIL default). The font is iteratively scaled and word-wrapped to fit precisely within both the horizontal width and available multiline block height.
+1. The background color is accurately sampled from the pixel border surrounding the original text block. 
+2. A padded solid rectangle in the sampled background color is painted over the original text, cleanly erasing it and any antialiasing bleed.
+3. The translated text is rendered on top using the closest available system font (DejaVu → Helvetica → Arial → PIL default). The font is iteratively scaled and word-wrapped to fit precisely within the unpadded, tight Tesseract bounding box, ensuring exact alignment.
 
 ---
 
@@ -106,12 +104,9 @@ measurements, and formatting conventions — "500 ml" stays "500 ml", "Aceite de
 Oliva Virgen Extra" becomes "Extra Virgin Olive Oil" rather than a garbled
 literal rendering.
 
-**Why percentage-based bounding boxes?**
-Asking the model for pixel coordinates couples it to a specific image
-resolution and forces the system to share exact dimensions with the prompt.
-Percentages are resolution-independent: the same response works whether the
-image is 300×300 or 3000×3000, and converting to pixels is a trivial multiply
-performed locally, keeping the model's context lean.
+**Why a Hybrid Architecture (Claude + Tesseract OCR)?**
+LLM-estimated bounding boxes carry ±5–10% spatial error, leading to squished text and overlapping boxes. However, standard OCR engines (like Tesseract) provide pixel-perfect bounding boxes but lack the intelligence to contextually group words or translate idioms. 
+By combining them, we get the best of both worlds: Claude reads the whole image to generate natural, idiomatic translations grouped by logical paragraphs, while Tesseract precisely maps where those paragraphs live on the image. A fuzzy string matcher reconciles the two streams.
 
 **Why PIL over generative inpainting?**
 Within prototype scope, PIL offers zero additional cost, zero inference
@@ -154,8 +149,7 @@ To view traces:
 
 ## Known Limitations
 
-- **Bounding box accuracy** — LLM-estimated bounding boxes carry ±5–10%
-  spatial error; small, densely-packed text may have overlapping boxes.
+- **Tesseract dependencies** — requires `tesseract` to be installed on the host OS. Without the proper language packs (e.g., `tesseract-ocr-spa`), it may occasionally fail to match heavily accented text.
 - **Font matching** — the pipeline uses DejaVu/Arial/Helvetica as a fallback;
   the original typeface is not detected or matched.
 - **Solid background fill** — while intelligent border sampling perfectly blends text boxes on uniform backgrounds, images with complex gradients or heavy textures will still show a visible solid rectangle.
@@ -170,8 +164,6 @@ To view traces:
 
 ## What I Would Do With More Time
 
-- **Pixel-accurate bounding boxes** — replace LLM-estimated boxes with a
-  dedicated text detector (CRAFT, EAST, or PaddleOCR) for sub-pixel precision.
 - **Seamless background reconstruction** — apply OpenCV inpainting
   (`cv2.inpaint`) to fill erased regions using surrounding pixel context
   instead of a flat colour rectangle.
