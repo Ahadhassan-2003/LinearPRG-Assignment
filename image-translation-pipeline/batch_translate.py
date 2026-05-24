@@ -1,6 +1,7 @@
 import os
 import glob
 import sys
+import json
 from pathlib import Path
 
 # Ensure the app module can be imported
@@ -57,7 +58,19 @@ def main():
                 out_path = os.path.join(output_dir, out_name)
                 with open(out_path, "wb") as f:
                     f.write(out_bytes)
-                print(f"  [Success] Saved to {out_path}")
+                print(f"  [Success] Saved image to {out_path}")
+                
+                # Also save the JSON output
+                json_name = os.path.splitext(out_name)[0] + ".json"
+                json_path = os.path.join(output_dir, json_name)
+                blocks = final_state.get("text_blocks") or []
+                json_data = {
+                    "detected_language": final_state.get("detected_language"),
+                    "text_blocks": [b.model_dump() for b in blocks]
+                }
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(json_data, f, indent=2, ensure_ascii=False)
+                print(f"  [Success] Saved JSON to {json_path}")
             else:
                 print(f"  [Warning] Pipeline completed but no output image was produced.")
                 
