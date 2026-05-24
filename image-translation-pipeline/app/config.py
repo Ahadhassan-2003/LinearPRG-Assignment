@@ -1,6 +1,8 @@
 """Application settings loaded from environment variables via pydantic-settings."""
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
 
 
 class Settings(BaseSettings):
@@ -47,9 +49,10 @@ class Settings(BaseSettings):
     # Token budget for the extraction model response
     EXTRACTION_MAX_TOKENS: int = 4096
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
 
 settings = Settings()
