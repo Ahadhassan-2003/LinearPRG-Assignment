@@ -192,6 +192,14 @@ To view traces:
 
 ---
 
+## Langsmith Tracability
+
+![Langsmith traces](image.png)
+
+![Langsmith Run](image-1.png)
+
+---
+
 ## Running Tests
 
 ```bash
