@@ -240,6 +240,7 @@ async def translate_image(
         image_format=fmt,
         target_language=target_language,
         source_language=source_language,
+        filename=image.filename,
     )
 
     if final_state.get("error"):
@@ -332,6 +333,7 @@ async def translate_image_json(
         image_format=fmt,
         target_language=target_language,
         source_language=source_language,
+        filename=image.filename,
     )
 
     text_blocks = final_state.get("text_blocks") or []

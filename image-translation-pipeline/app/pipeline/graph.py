@@ -20,6 +20,7 @@ import os
 from typing import Any
 
 from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 from langgraph.graph import END, StateGraph
 
 from app.config import settings
@@ -110,6 +111,7 @@ def run_pipeline(
     image_format: str,
     target_language: str = "English",
     source_language: str = "auto",
+    filename: str | None = None,
 ) -> dict[str, Any]:
     """Run the full image translation pipeline as a single LangSmith trace.
 
@@ -135,6 +137,11 @@ def run_pipeline(
         The final :class:`~app.models.PipelineState` dict after all nodes
         have executed.
     """
+    if filename:
+        run = get_current_run_tree()
+        if run:
+            run.name = filename
+
     initial_state: PipelineState = {
         "image_bytes": image_bytes,
         "image_width": image_width,
@@ -158,7 +165,8 @@ def run_pipeline(
     )
 
     pipeline = get_pipeline()
-    final_state: dict[str, Any] = pipeline.invoke(initial_state)
+    config = {"run_name": filename} if filename else {}
+    final_state: dict[str, Any] = pipeline.invoke(initial_state, config=config)
 
     if final_state.get("error"):
         logger.error("Pipeline finished with error: %s", final_state["error"])

@@ -419,8 +419,9 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
         sorted_blocks = sorted(text_blocks, key=_area, reverse=True)
 
         # ---------------------------------------------------------------
-        # 4. Process each block
+        # 4. Pass 1: Cover original text for ALL blocks
         # ---------------------------------------------------------------
+        processed_blocks = []
         for block in sorted_blocks:
             bbox_px = block.bbox.to_pixels(img_w, img_h)
             x_px, y_px, w_px, h_px = bbox_px
@@ -444,7 +445,19 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
             working = _cover_original_text(
                 working, clamped_bbox, sampled_bg
             )
+            
+            processed_blocks.append({
+                "block": block,
+                "clamped_bbox": clamped_bbox
+            })
 
+        # ---------------------------------------------------------------
+        # 5. Pass 2: Draw translated text for ALL blocks
+        # ---------------------------------------------------------------
+        for item in processed_blocks:
+            block = item["block"]
+            clamped_bbox = item["clamped_bbox"]
+            
             # Draw translated text
             working = _draw_translated_text(
                 image=working,
@@ -457,7 +470,7 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
             )
 
         # ---------------------------------------------------------------
-        # 5. Convert back to original colour mode and serialise
+        # 6. Convert back to original colour mode and serialise
         # ---------------------------------------------------------------
         out_format = "JPEG" if image_format.upper() == "JPEG" else "PNG"
         if out_format == "JPEG":
