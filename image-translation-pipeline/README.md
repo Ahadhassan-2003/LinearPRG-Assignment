@@ -47,15 +47,25 @@ uv run uvicorn app.main:app --reload
 
 ```bash
 # Returns translated image file (PNG)
-curl -X POST "http://localhost:8000/translate-image" \
+curl -X POST "http://localhost:8000/v1/translate-image" \
   -F "image=@sample_images/02_aceite_oliva.png" \
   -F "target_language=English" \
+  -F "ocr_lang=spa" \
   --output output.png
 
 # Returns JSON with base64-encoded image (useful for debugging / front-ends)
-curl -X POST "http://localhost:8000/translate-image/json" \
+curl -X POST "http://localhost:8000/v1/translate-image/json" \
   -F "image=@sample_images/02_aceite_oliva.png" \
-  -F "target_language=English"
+  -F "target_language=English" \
+  -F "ocr_lang=spa"
+```
+
+### Running the Batch Script
+
+If you want to process a directory of images locally, a batch script is provided. It automatically saves the translated images and their accompanying JSON metadata to `translated_sample_images/`.
+
+```bash
+uv run python translate_sample_images.py --ocr-lang spa
 ```
 
 Response headers on the binary endpoint:
