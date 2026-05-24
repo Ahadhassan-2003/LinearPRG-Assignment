@@ -215,56 +215,6 @@ def _find_best_font_and_wrap(
     return font, lines, line_height
 
 
-def _refine_bbox_height(
-    image: Image.Image,
-    x: int,
-    y: int,
-    w: int,
-    h: int,
-    bg_color_hex: str,
-) -> int:
-    """Adjust the height of the bounding box to snap to background boundaries.
-    
-    Shrinks the box from the bottom if it overfills into a different colored
-    region, and expands the box downwards to cover text descenders (like 'p')
-    if the region below shares the same background color.
-    """
-    rgb_image = image.convert("RGB")
-    br, bg, bb = hex_to_rgb(bg_color_hex)
-
-    def row_matches_bg(row_y: int) -> bool:
-        if row_y < 0 or row_y >= rgb_image.height:
-            return False
-        matches = 0
-        total = 0
-        # Check a sample of pixels across the row
-        for px in range(x, x + w, max(1, w // 20)):
-            if px >= rgb_image.width:
-                break
-            pr, pg, pb = rgb_image.getpixel((px, row_y))  # type: ignore[arg-type]
-            # Manhattan distance in RGB space
-            dist = abs(pr - br) + abs(pg - bg) + abs(pb - bb)
-            if dist < 80:  # Tolerance for compression artifacts and noise
-                matches += 1
-            total += 1
-        if total == 0:
-            return False
-        return matches / total >= 0.5
-
-    # 1. Shrink from bottom if overfilling into a different background
-    while h > 10 and not row_matches_bg(y + h - 1):
-        h -= 1
-
-    # 2. Expand bottom to cover descenders (e.g. 'p', 'y', 'g')
-    expanded = 0
-    max_expand = max(10, int(h * 0.4))
-    while expanded < max_expand and row_matches_bg(y + h):
-        h += 1
-        expanded += 1
-
-    return h
-
-
 def _draw_translated_text(
     image: Image.Image,
     text: str,
@@ -433,17 +383,21 @@ def reconstruct_image_node(state: PipelineState) -> dict[str, Any]:
             h_px = max(1, min(h_px, img_h - y_px))
             clamped_bbox = (x_px, y_px, w_px, h_px)
 
-            # Sample the actual background color from the edges
-            sampled_bg = sample_background_color(pil_image, x_px, y_px, w_px, h_px)
+            # Create a slightly padded box for covering the background to erase aliasing bleed
+            pad_x = int(max(4, w_px * 0.02))
+            pad_y = int(max(4, h_px * 0.05))
+            cx = max(0, x_px - pad_x)
+            cy = max(0, y_px - pad_y)
+            cw = min(img_w - cx, w_px + pad_x * 2)
+            ch = min(img_h - cy, h_px + pad_y * 2)
+            cover_bbox = (cx, cy, cw, ch)
 
-            # Refine the bounding box height to fix overfilling and descender clipping
-            h_px = _refine_bbox_height(pil_image, x_px, y_px, w_px, h_px, sampled_bg)
-            h_px = max(1, min(h_px, img_h - y_px))
-            clamped_bbox = (x_px, y_px, w_px, h_px)
+            # Sample the actual background color from the padded edges
+            sampled_bg = sample_background_color(pil_image, cx, cy, cw, ch)
 
-            # Cover original text
+            # Cover original text using the padded box
             working = _cover_original_text(
-                working, clamped_bbox, sampled_bg
+                working, cover_bbox, sampled_bg
             )
             
             processed_blocks.append({
